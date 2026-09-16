@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bel - Carte Interactive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+            color: #fff;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 28px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .sidebar-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .search-container {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .stats-container {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #64c8ff;
+        }
+
+        .magasins-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .magasin-item {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .magasin-item:hover {
+            background: rgba(255,255,255,0.10);
+        }
+
+        .magasin-name {
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        .magasin-item[data-color="#0288d1"] { border-left-color: #0288d1; }
+        .magasin-item[data-color="#a52714"] { border-left-color: #a52714; }
+        .magasin-item[data-color="#f9a825"] { border-left-color: #f9a825; }
+        .magasin-item[data-color="#ffea00"] { border-left-color: #ffea00; }
+
+        #map {
+            flex: 1;
+            background: #1a1a1a;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%) !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+        }
+
+        .leaflet-popup-content {
+            color: #fff !important;
+            font-family: 'Inter', sans-serif !important;
+            margin: 0 !important;
+            padding: 12px !important;
+            font-size: 13px !important;
+        }
+
+        .popup-header {
+            font-weight: 700;
+            color: #64c8ff;
+            font-size: 14px !important;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+        }
+
+        .leaflet-marker-shadow {
+            display: none !important;
+        }
+
+        .leaflet-marker-icon {
+            border: none !important;
+            box-shadow: none !important;
+            background: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">BEL</div>
+                <div class="sidebar-subtitle">Secteur Bastien • 52 Points</div>
+            </div>
+
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="Rechercher...">
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-item">
+                    <div class="stat-label">Total Points</div>
+                    <div class="stat-value" id="totalCount">52</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">CA Total</div>
+                    <div class="stat-value" id="totalCA">6.6M€</div>
+                </div>
+            </div>
+
+            <div class="magasins-list" id="magasinsList"></div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script>
+        const DATA = [{"nom": "Auchan Hypermarché Hirson", "lat": 49.91261, "lng": 4.09081, "color": "#f9a825", "ca_k": 114}, {"nom": "Carrefour Reims Cernay", "lat": 49.26109, "lng": 4.06571, "color": "#f9a825", "ca_k": 148}, {"nom": "Carrefour Laon", "lat": 49.54784, "lng": 3.6145, "color": "#f9a825", "ca_k": 198}, {"nom": "Carrefour Rethel", "lat": 49.52198, "lng": 4.37291, "color": "#f9a825", "ca_k": 133}, {"nom": "Carrefour Verdun", "lat": 49.14298, "lng": 5.40728, "color": "#a52714", "ca_k": 94}, {"nom": "Carrefour Reims Cormontreuil", "lat": 49.21505, "lng": 4.05343, "color": "#ffea00", "ca_k": 211}, {"nom": "Carrefour Charleville-Mézières", "lat": 49.73922, "lng": 4.70562, "color": "#ffea00", "ca_k": 303}, {"nom": "Carrefour Reims Neuvillette", "lat": 49.28664, "lng": 4.02248, "color": "#f9a825", "ca_k": 148}, {"nom": "Carrefour Reims Tinqueux", "lat": 49.254244, "lng": 3.9797399, "color": "#ffea00", "ca_k": 207}, {"nom": "Carrefour Market Witry-Les-Reims", "lat": 49.28389, "lng": 4.10814, "color": "#a52714", "ca_k": 42}, {"nom": "Market Reims Gambetta", "lat": 49.24729, "lng": 4.03711, "color": "#a52714", "ca_k": 38}, {"nom": "Market Reims Jacquart", "lat": 49.26651, "lng": 4.0395, "color": "#a52714", "ca_k": 38}, {"nom": "Market Reims Clémenceau", "lat": 49.25224, "lng": 4.04702, "color": "#a52714", "ca_k": 38}, {"nom": "Market Fismes", "lat": 49.30898, "lng": 3.6854, "color": "#a52714", "ca_k": 45}, {"nom": "E.Leclerc SAINT BRICE COURCELLES", "lat": 49.2832546, "lng": 4.0003261, "color": "#ffea00", "ca_k": 402}, {"nom": "E.Leclerc HIRSON", "lat": 49.9119492, "lng": 4.0734155, "color": "#f9a825", "ca_k": 43}, {"nom": "E.Leclerc SEDAN", "lat": 49.6977758, "lng": 4.9271474, "color": "#ffea00", "ca_k": 333}, {"nom": "E.Leclerc VERDUN", "lat": 49.1676788, "lng": 5.3819422, "color": "#ffea00", "ca_k": 290}, {"nom": "E.Leclerc JONCHERY/VESLE", "lat": 49.2836932, "lng": 3.8271411, "color": "#a52714", "ca_k": 82}, {"nom": "E.Leclerc VOUZIERS", "lat": 49.3916358, "lng": 4.6871366, "color": "#f9a825", "ca_k": 110}, {"nom": "E.Leclerc CHAMPFLEURY", "lat": 49.2042289, "lng": 4.0149816, "color": "#ffea00", "ca_k": 322}, {"nom": "E.Leclerc Laon", "lat": 49.5928002, "lng": 3.645635, "color": "#ffea00", "ca_k": 321}, {"nom": "Intermarché SUPER Champigny", "lat": 49.263188, "lng": 3.961618, "color": "#a52714", "ca_k": 68}, {"nom": "Intermarché SUPER Sedan", "lat": 49.706394, "lng": 4.936391, "color": "#a52714", "ca_k": 50}, {"nom": "Intermarché SUPER Sault les Rethel", "lat": 49.5012397, "lng": 4.35706, "color": "#f9a825", "ca_k": 110}, {"nom": "Intermarché SUPER Saint-Erme-Outre-et-Ramecourt", "lat": 49.5321071, "lng": 3.8568891, "color": "#a52714", "ca_k": 87}, {"nom": "Intermarché SUPER Bogny-sur-Meuse", "lat": 49.8564962, "lng": 4.764777, "color": "#a52714", "ca_k": 76}, {"nom": "Intermarché SUPER Vireux-Molhain", "lat": 50.0750948, "lng": 4.7235981, "color": "#a52714", "ca_k": 59}, {"nom": "Intermarché SUPER Charleville Mézières", "lat": 49.7849613, "lng": 4.7118683, "color": "#a52714", "ca_k": 231}, {"nom": "Intermarché Vervins / Verfon SA", "lat": 49.840487, "lng": 3.91816, "color": "#a52714", "ca_k": 65}, {"nom": "Intermarché SUPER Belleville-sur-Meuse", "lat": 49.1688469, "lng": 5.387598, "color": "#a52714", "ca_k": 58}, {"nom": "Intermarché CONTACT Givet", "lat": 50.1486629, "lng": 4.8206601, "color": "#ffea00", "ca_k": 496}, {"nom": "Intermarché SUPER Warmeriville", "lat": 49.3480248, "lng": 4.2086591, "color": "#a52714", "ca_k": 64}, {"nom": "Intermarché", "lat": 49.240802, "lng": 4.0182019, "color": "#a52714", "ca_k": 54}, {"nom": "Intermarché SUPER Mourmelon le Grand", "lat": 49.134031, "lng": 4.365996, "color": "#a52714", "ca_k": 71}, {"nom": "Intermarché SUPER Laon", "lat": 49.5829108, "lng": 3.6428894, "color": "#a52714", "ca_k": 54}, {"nom": "Intermarché SUPER Bazeilles", "lat": 49.6851961, "lng": 4.9734538, "color": "#a52714", "ca_k": 79}, {"nom": "Intermarché HYPER Charleville Mézières", "lat": 49.7461099, "lng": 4.7296491, "color": "#ffea00", "ca_k": 231}, {"nom": "Intermarché SUPER Fismes", "lat": 49.307526, "lng": 3.666403, "color": "#a52714", "ca_k": 62}, {"nom": "Intermarché SUPER Carignan", "lat": 49.6455083, "lng": 5.1509803, "color": "#a52714", "ca_k": 60}, {"nom": "E.Leclerc DRIVE Sedan", "lat": 49.6976911, "lng": 4.927422, "color": "#0288d1", "ca_k": 38}, {"nom": "E.Leclerc DRIVE Haudainville", "lat": 49.1414182, "lng": 5.4110026, "color": "#0288d1", "ca_k": 59}, {"nom": "E.Leclerc DRIVE Hirson", "lat": 49.907896, "lng": 4.091163, "color": "#0288d1", "ca_k": 43}, {"nom": "E.Leclerc DRIVE Athies-sous-Laon", "lat": 49.5706109, "lng": 3.6606926, "color": "#0288d1", "ca_k": 49}, {"nom": "E.Leclerc DRIVE Laon", "lat": 49.57, "lng": 3.60667, "color": "#0288d1", "ca_k": 59}, {"nom": "E.Leclerc DRIVE Reims Jean-Jaurès", "lat": 49.269555, "lng": 4.070016, "color": "#0288d1", "ca_k": 159}, {"nom": "E.Leclerc DRIVE Saint-Brice-Courcelles", "lat": 49.2809851, "lng": 4.0022735, "color": "#0288d1", "ca_k": 142}, {"nom": "E.Leclerc DRIVE Verdun", "lat": 49.167778, "lng": 5.382778, "color": "#0288d1", "ca_k": 40}, {"nom": "E.Leclerc DRIVE Champfleury / Reims", "lat": 49.2030002, "lng": 4.0162865, "color": "#0288d1", "ca_k": 174}, {"nom": "Hyper U et Drive", "lat": 49.24137, "lng": 4.0836, "color": "#a52714", "ca_k": 83}, {"nom": "Hyper U et Drive", "lat": 49.7339628, "lng": 4.7548891, "color": "#ffea00", "ca_k": 83}, {"nom": "Super U et Drive", "lat": 49.0906, "lng": 4.9033, "color": "#a52714", "ca_k": 0}];
+
+        const map = L.map('map').setView([49.3, 4.5], 7);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        let markers = [];
+
+        function createMarkerSVG(color) {
+            return `<svg width="20" height="30" viewBox="0 0 14 22" fill="${color}" stroke="white" stroke-width="1.2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 0C3.5 0 0.5 3 0.5 6.5c0 5 6.5 14.5 6.5 14.5s6.5-9.5 6.5-14.5C13.5 3 10.5 0 7 0z" />
+                <circle cx="7" cy="6.5" r="2.5" fill="white" />
+            </svg>`;
+        }
+
+        function renderMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            DATA.forEach(mag => {
+                const icon = L.divIcon({
+                    html: createMarkerSVG(mag.color),
+                    iconSize: [20, 30],
+                    iconAnchor: [10, 30]
+                });
+
+                const popup = `<div class="popup-header">${mag.nom}</div>${mag.ca_k > 0 ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px;">CA: <strong>${mag.ca_k}K€</strong></div>` : ''}`;
+
+                const marker = L.marker([mag.lat, mag.lng], { icon })
+                    .bindPopup(popup)
+                    .addTo(map);
+
+                markers.push(marker);
+            });
+
+            updateList();
+        }
+
+        function updateList() {
+            const list = document.getElementById('magasinsList');
+            const visible = DATA.slice().sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+
+            list.innerHTML = visible.map(mag => {
+                return `<div class="magasin-item" data-color="${mag.color}" onclick="goToMag('${mag.nom.replace(/'/g, "\\'")}')">
+                    <div class="magasin-name">${mag.nom}</div>${mag.ca_k > 0 ? `<div style="font-size: 11px; color: #64c8ff; margin-top: 3px; font-weight: 600;">${mag.ca_k}K€</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function goToMag(nom) {
+            const mag = DATA.find(m => m.nom === nom);
+            if (!mag) return;
+            map.setView([mag.lat, mag.lng], 14);
+            setTimeout(() => {
+                const marker = markers.find(m => m.getPopup().getContent().includes(nom));
+                if (marker) marker.openPopup();
+            }, 300);
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const q = e.target.value.toLowerCase();
+            const list = document.getElementById('magasinsList');
+            
+            if (!q) {
+                updateList();
+            } else {
+                const filtered = DATA.filter(m => m.nom.toLowerCase().includes(q))
+                    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+
+                list.innerHTML = filtered.map(mag => {
+                    return `<div class="magasin-item" data-color="${mag.color}" onclick="goToMag('${mag.nom.replace(/'/g, "\\'")}')">
+                        <div class="magasin-name">${mag.nom}</div>${mag.ca_k > 0 ? `<div style="font-size: 11px; color: #64c8ff; margin-top: 3px; font-weight: 600;">${mag.ca_k}K€</div>` : ''}
+                    </div>`;
+                }).join('');
+            }
+        });
+
+        document.getElementById('totalCount').textContent = DATA.length;
+        document.getElementById('totalCA').textContent = '6.65M€';
+        renderMarkers();
+    </script>
+</body>
+</html>
